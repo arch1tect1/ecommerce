@@ -6,13 +6,5 @@
       "path": "/api/cron/sync-1c",
       "schedule": "0 3 * * *"
     }
-  ],
-  "functions": {
-    "src/app/api/sync/1c/products/route.ts": { "maxDuration": 300 },
-    "src/app/api/sync/1c/stock/route.ts":    { "maxDuration": 300 },
-    "src/app/api/sync/1c/prices/route.ts":   { "maxDuration": 300 },
-    "src/app/api/sync/1c/categories/route.ts": { "maxDuration": 300 },
-    "src/app/api/sync/1c/customers/route.ts":  { "maxDuration": 300 },
-    "src/app/api/cron/sync-1c/route.ts":       { "maxDuration": 300 }
-  }
+  ]
 }
