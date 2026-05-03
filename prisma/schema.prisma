@@ -1,0 +1,214 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  fullName     String
+  role         Role      @default(CUSTOMER)
+  isActive     Boolean   @default(true)
+  customerId   String?   @unique
+  customer     Customer? @relation(fields: [customerId], references: [id])
+  createdAt    DateTime  @default(now())
+  lastLoginAt  DateTime?
+
+  sessions     Session[]
+  searchEvents SearchEvent[]
+  productViews ProductView[]
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expires      DateTime
+}
+
+model Customer {
+  id          String   @id @default(cuid())
+  externalId  String   @unique
+  name        String
+  taxId       String?
+  phone       String?
+  address     String?
+  balance     Decimal  @default(0) @db.Decimal(14, 2)
+  creditLimit Decimal  @default(0) @db.Decimal(14, 2)
+  user        User?
+  orders      Order[]
+  updatedAt   DateTime @updatedAt
+}
+
+model Category {
+  id         String     @id @default(cuid())
+  externalId String?    @unique
+  name       String
+  slug       String     @unique
+  parentId   String?
+  parent     Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children   Category[] @relation("CategoryTree")
+  products   Product[]
+}
+
+model Product {
+  id           String    @id @default(cuid())
+  externalId   String    @unique
+  sku          String    @unique
+  name         String
+  description  String?
+  brand        String?
+  price        Decimal   @db.Decimal(14, 2)
+  stock        Int       @default(0)
+  categoryId   String?
+  category     Category? @relation(fields: [categoryId], references: [id])
+  images       ProductImage[]
+  isActive     Boolean   @default(true)
+  /// tsvector column managed by DB trigger — do not write from application code
+  searchVector Unsupported("tsvector")?
+  lastSyncedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  views      ProductView[]
+  orderItems OrderItem[]
+  cartItems  CartItem[]
+
+  @@index([sku])
+  @@index([brand])
+  @@index([categoryId])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  isPrimary Boolean @default(false)
+  order     Int     @default(0)
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  items     CartItem[]
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id            String  @id @default(cuid())
+  cartId        String
+  cart          Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product @relation(fields: [productId], references: [id])
+  quantity      Int
+  priceSnapshot Decimal @db.Decimal(14, 2)
+
+  @@unique([cartId, productId])
+}
+
+model Order {
+  id            String        @id @default(cuid())
+  orderNumber   String        @unique
+  customerId    String
+  customer      Customer      @relation(fields: [customerId], references: [id])
+  status        OrderStatus   @default(PENDING)
+  paymentStatus PaymentStatus @default(UNPAID)
+  total         Decimal       @db.Decimal(14, 2)
+  paid          Decimal       @default(0) @db.Decimal(14, 2)
+  items         OrderItem[]
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([customerId, createdAt])
+  @@index([status])
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  sku       String
+  name      String
+  quantity  Int
+  unitPrice Decimal @db.Decimal(14, 2)
+  lineTotal Decimal @db.Decimal(14, 2)
+}
+
+// ── Analytics ────────────────────────────────────────────
+
+model SearchEvent {
+  id               String   @id @default(cuid())
+  userId           String?
+  user             User?    @relation(fields: [userId], references: [id])
+  query            String
+  normalizedQuery  String
+  searchType       String
+  resultCount      Int
+  clickedProductId String?
+  createdAt        DateTime @default(now())
+
+  @@index([normalizedQuery])
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([resultCount, createdAt])
+}
+
+model ProductView {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([productId, createdAt])
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+model SyncLog {
+  id               String    @id @default(cuid())
+  source           String
+  syncType         String
+  status           String
+  recordsProcessed Int       @default(0)
+  recordsFailed    Int       @default(0)
+  errorDetails     Json?
+  startedAt        DateTime
+  finishedAt       DateTime?
+
+  @@index([syncType, startedAt])
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+  MANAGER
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTIAL
+  PAID
+}
