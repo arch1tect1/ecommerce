@@ -21,9 +21,20 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 /**
- * Vercel Cron pull endpoint. Vercel calls this every 30 minutes (see
- * vercel.json) with `Authorization: Bearer ${CRON_SECRET}`.
+ * Vercel Cron pull endpoint.
  *
+ * Schedule: `0 3 * * *` — once daily at 03:00 UTC (see vercel.json).
+ *
+ * Why daily instead of every 30 minutes? Vercel's Hobby plan limits cron
+ * jobs to a single daily run. For real-time sync use the push endpoints at
+ * /api/sync/1c/* — they're authenticated, rate-limited, and intended to
+ * be 1C's primary integration path. This endpoint is a safety-net
+ * fallback for when 1C cannot push.
+ *
+ * After upgrading to Pro, change the schedule in `vercel.json` to:
+ *     "schedule": "*\/30 * * * *"   // every 30 minutes
+ *
+ * Vercel calls this with `Authorization: Bearer ${CRON_SECRET}`.
  * For each sync type we issue an HTTP GET to `${ONEC_PULL_URL}/{type}`
  * with the configured Authorization header, parse + validate the JSON,
  * and feed it into the same core sync function used by the push routes.

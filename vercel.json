@@ -4,7 +4,7 @@
   "crons": [
     {
       "path": "/api/cron/sync-1c",
-      "schedule": "*/30 * * * *"
+      "schedule": "0 3 * * *"
     }
   ],
   "functions": {

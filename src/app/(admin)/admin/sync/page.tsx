@@ -26,8 +26,8 @@ const STALE_AFTER_MS: Record<SyncType, number> = {
   customers: 24 * 60 * 60 * 1000, // 24h
 };
 
-const CRON_SCHEDULE = "*/30 * * * *"; // matches vercel.json
-const CRON_DESCRIPTION = "every 30 minutes";
+const CRON_SCHEDULE = "0 3 * * *"; // matches vercel.json
+const CRON_DESCRIPTION = "daily at 03:00 UTC (Vercel Hobby plan limit; bump to */30 on Pro)";
 
 export default async function SyncPage() {
   const [history, lastSuccessRows] = await Promise.all([
